@@ -46,7 +46,7 @@ func (m *RequestLoggerModule) handleEntrypoint(
 		fields["body_preview"] = previewBytes(payload.Body, m.cfg.MaxPayloadLogSize)
 	}
 
-	logStage("entrypoint", fields)
+	logStage("entrypoint", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }

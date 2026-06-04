@@ -31,7 +31,7 @@ func (m *RequestLoggerModule) handleRawBidderResponse(
 
 	fields["bidder_window_elapsed_ms"] = getBidderElapsedMs(miCtx.ModuleContext, payload.Bidder)
 
-	logStage("raw_bidder_response", fields)
+	logStage("raw_bidder_response", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }

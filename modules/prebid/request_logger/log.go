@@ -10,7 +10,7 @@ import (
 
 const componentName = "pbs-hook-request-logger"
 
-func logStage(stage string, fields map[string]any) {
+func logStage(stage string, fields map[string]any, pretty bool) {
 	fields["component"] = componentName
 	fields["stage"] = stage
 
@@ -19,6 +19,9 @@ func logStage(stage string, fields map[string]any) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
+	if pretty {
+		enc.SetIndent("", "  ")
+	}
 	if err := enc.Encode(fields); err != nil {
 		logger.Infof(`{"component":"%s","stage":"%s","error":"marshal_failed"}`, componentName, stage)
 		return

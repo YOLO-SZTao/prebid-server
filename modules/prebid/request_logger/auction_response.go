@@ -37,7 +37,7 @@ func (m *RequestLoggerModule) handleAuctionResponse(
 			fields["httpcall_details"] = collectHttpCallDetails(payload.BidResponse, m.cfg.MaxPayloadLogSize)
 	}
 
-	logStage("auction_response", fields)
+	logStage("auction_response", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }

@@ -12,6 +12,7 @@ type RequestLoggerConfig struct {
 	LogAllProcessedBidResponses bool `mapstructure:"log_all_processed_bid_responses"`
 	LogAuctionResponse          bool `mapstructure:"log_auction_response"`
 	LogExitpoint                bool `mapstructure:"log_exitpoint"`
+	LogPrettyPrint              bool `mapstructure:"log_pretty_print"`
 	MaxPayloadLogSize           int  `mapstructure:"max_payload_log_size"`
 }
 

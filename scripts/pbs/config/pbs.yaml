@@ -1,0 +1,90 @@
+external_url: ""
+host: ""
+port: 8000
+admin_port: 6060
+status_response: "ok"
+gdpr:
+  default_value: "0"
+stored_requests:
+  filesystem:
+    enabled: true
+    directorypath: "./stored_requests/data/by_id"
+
+stored_responses:
+  filesystem:
+    enabled: true
+    directorypath: "./stored_responses/data/by_id"
+
+hooks:
+  enabled: true
+
+  modules:
+    prebid:
+      request_logger:
+        enabled: true
+
+        # ── 阶段开关 (调试阶段全开) ──
+        log_entrypoint: true                # Stage 1: 客户端 HTTP 请求
+        log_processed_auction: true         # Stage 3: PBS 解析后拍卖请求
+        log_bidder_request: true            # Stage 4: 发给单个 Adapter 的参数
+        log_raw_bidder_response: true       # Stage 5: Adapter 解析后的返回结果
+        log_all_processed_bid_responses: true  # Stage 6: 有 bid 的 bidder 汇总
+        log_auction_response: true          # Stage 7: PBS 最终聚合结果
+        log_exitpoint: true                 # Stage 8: 正常业务返回路径
+
+        # ── 格式化 ──
+        max_payload_log_size: 2048          # 请求/响应体截断长度 (字符数)
+        log_pretty_print: true              # 多行缩进输出 JSON 日志 (调试期开启，生产环境建议关闭)
+
+  host_execution_plan:
+    endpoints:
+      "/openrtb2/auction":
+        stages:
+          entrypoint:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-entry"
+
+          processed_auction_request:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-auction"
+
+          bidder_request:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-bidder-req"
+
+          raw_bidder_response:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-bidder-resp"
+
+          all_processed_bid_responses:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-all-bids"
+
+          auction_response:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "request-logger-auction-resp"
+
+          exitpoint:
+            groups:
+              - timeout: 200
+                hook_sequence:
+                  - module_code: "prebid.request_logger"
+                    hook_impl_code: "r:qequest-logger-exit"

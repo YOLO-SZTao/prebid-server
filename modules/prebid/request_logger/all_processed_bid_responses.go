@@ -24,7 +24,7 @@ func (m *RequestLoggerModule) handleAllProcessedBidResponses(
 	fields["seat_bid_count"] = len(payload.Responses)
 	fields["total_bids"] = countTotalBidsFromSeatBids(payload.Responses)
 
-	logStage("all_processed_bid_responses", fields)
+	logStage("all_processed_bid_responses", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }

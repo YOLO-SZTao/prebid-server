@@ -43,7 +43,7 @@ func (m *RequestLoggerModule) handleProcessedAuction(
 		fields["request_preview"] = previewJSON(payload.Request.BidRequest, m.cfg.MaxPayloadLogSize)
 	}
 
-	logStage("processed_auction", fields)
+	logStage("processed_auction", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }

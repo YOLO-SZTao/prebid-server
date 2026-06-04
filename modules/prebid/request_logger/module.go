@@ -43,6 +43,9 @@ func Builder(cfg json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, error) 
 		if v, ok := raw["log_exitpoint"].(bool); ok {
 			mCfg.LogExitpoint = v
 		}
+		if v, ok := raw["log_pretty_print"].(bool); ok {
+			mCfg.LogPrettyPrint = v
+		}
 		if v, ok := raw["max_payload_log_size"].(float64); ok {
 			mCfg.MaxPayloadLogSize = int(v)
 		}

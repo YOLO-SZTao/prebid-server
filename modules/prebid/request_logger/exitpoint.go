@@ -28,7 +28,7 @@ func (m *RequestLoggerModule) handleExitpoint(
 		fields["request_elapsed_ms"] = time.Since(startTime).Milliseconds()
 	}
 
-	logStage("exitpoint", fields)
+	logStage("exitpoint", fields, m.cfg.LogPrettyPrint)
 
 	return result, nil
 }
