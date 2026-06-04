@@ -65,7 +65,9 @@ func (a *adapter) MakeRequests(request *openrtb2.BidRequest, requestInfo *adapte
 			continue
 		}
 
-		bidderImpExt.BidToken = requestCopy.User.BuyerUID
+		if requestCopy.User != nil {
+			bidderImpExt.BidToken = requestCopy.User.BuyerUID
+		}
 		impExt.Ext = bidderImpExt
 		if newImpExt, err := json.Marshal(impExt); err == nil {
 			imp.Ext = newImpExt
