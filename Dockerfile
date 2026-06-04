@@ -10,7 +10,7 @@ RUN mkdir -p /app/prebid-server/
 WORKDIR /app/prebid-server/
 ENV GOROOT=/usr/local/go
 ENV PATH=$GOROOT/bin:$PATH
-ENV GOPROXY="https://proxy.golang.org"
+ENV GOPROXY="https://goproxy.cn,direct"
 
 # Installing gcc as cgo uses it to build native code of some modules
 RUN apt-get update && \
