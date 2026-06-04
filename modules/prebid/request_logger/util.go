@@ -216,3 +216,31 @@ func headersToMap(headers map[string][]string) map[string]string {
 	return result
 }
 
+func collectHttpCallDetails(resp *openrtb2.BidResponse, maxSize int) map[string][]map[string]any {
+	if resp == nil || resp.Ext == nil {
+		return nil
+	}
+
+	var ext openrtb_ext.ExtBidResponse
+	if err := json.Unmarshal(resp.Ext, &ext); err != nil || ext.Debug == nil {
+		return nil
+	}
+
+	result := make(map[string][]map[string]any)
+	for bidder, calls := range ext.Debug.HttpCalls {
+		bidderStr := string(bidder)
+		for _, c := range calls {
+			if c == nil {
+				continue
+			}
+			result[bidderStr] = append(result[bidderStr], map[string]any{
+				"uri":           c.Uri,
+				"status":        c.Status,
+				"request_body":  truncateString(c.RequestBody, maxSize),
+				"response_body": truncateString(c.ResponseBody, maxSize),
+			})
+		}
+	}
+	return result
+}
+

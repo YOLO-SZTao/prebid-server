@@ -34,6 +34,7 @@ func (m *RequestLoggerModule) handleAuctionResponse(
 		fields["ext_warning_bidders"] = warningBidders
 		fields["ext_warning_details"] = warningDetails
 		fields["httpcall_bidders"] = httpcallBidders
+			fields["httpcall_details"] = collectHttpCallDetails(payload.BidResponse, m.cfg.MaxPayloadLogSize)
 	}
 
 	logStage("auction_response", fields)

@@ -242,3 +242,75 @@ func TestHeadersToMap(t *testing.T) {
 	assert.Nil(t, headersToMap(nil))
 	assert.Nil(t, headersToMap(map[string][]string{}))
 }
+
+func TestCollectHttpCallDetails(t *testing.T) {
+	t.Run("nil response", func(t *testing.T) {
+		assert.Nil(t, collectHttpCallDetails(nil, 1024))
+	})
+
+	t.Run("nil ext", func(t *testing.T) {
+		assert.Nil(t, collectHttpCallDetails(&openrtb2.BidResponse{}, 1024))
+	})
+
+	t.Run("no debug", func(t *testing.T) {
+		ext := openrtb_ext.ExtBidResponse{}
+		data, _ := json.Marshal(ext)
+		assert.Nil(t, collectHttpCallDetails(&openrtb2.BidResponse{Ext: json.RawMessage(data)}, 1024))
+	})
+
+	t.Run("normal httpcalls", func(t *testing.T) {
+		ext := openrtb_ext.ExtBidResponse{
+			Debug: &openrtb_ext.ExtResponseDebug{
+				HttpCalls: map[openrtb_ext.BidderName][]*openrtb_ext.ExtHttpCall{
+					"pubmatic": {
+						{
+							Uri:          "https://pubmatic.com/bid",
+							Status:       200,
+							RequestBody:  `{"id":"req-1"}`,
+							ResponseBody: `{"id":"resp-1"}`,
+						},
+					},
+					"rubicon": {
+						{
+							Uri:          "https://rubicon.com/bid",
+							Status:       204,
+							RequestBody:  `{"id":"req-2"}`,
+							ResponseBody: "",
+						},
+					},
+				},
+			},
+		}
+		data, _ := json.Marshal(ext)
+
+		result := collectHttpCallDetails(&openrtb2.BidResponse{Ext: json.RawMessage(data)}, 1024)
+		assert.Len(t, result, 2)
+
+		pubmatic := result["pubmatic"]
+		assert.Len(t, pubmatic, 1)
+		assert.Equal(t, "https://pubmatic.com/bid", pubmatic[0]["uri"])
+		assert.Equal(t, 200, pubmatic[0]["status"])
+		assert.Equal(t, `{"id":"req-1"}`, pubmatic[0]["request_body"])
+		assert.Equal(t, `{"id":"resp-1"}`, pubmatic[0]["response_body"])
+
+		rubicon := result["rubicon"]
+		assert.Len(t, rubicon, 1)
+		assert.Equal(t, 204, rubicon[0]["status"])
+	})
+
+	t.Run("truncates bodies", func(t *testing.T) {
+		ext := openrtb_ext.ExtBidResponse{
+			Debug: &openrtb_ext.ExtResponseDebug{
+				HttpCalls: map[openrtb_ext.BidderName][]*openrtb_ext.ExtHttpCall{
+					"pubmatic": {{Uri: "https://x.com", Status: 200, RequestBody: "abcdefghij", ResponseBody: "klmnopqrst"}},
+				},
+			},
+		}
+		data, _ := json.Marshal(ext)
+
+		result := collectHttpCallDetails(&openrtb2.BidResponse{Ext: json.RawMessage(data)}, 5)
+		pubmatic := result["pubmatic"]
+		assert.Equal(t, "ab...", pubmatic[0]["request_body"])
+		assert.Equal(t, "kl...", pubmatic[0]["response_body"])
+	})
+}
