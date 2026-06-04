@@ -27,19 +27,21 @@ RUN if [ "$TEST" != "false" ]; then ./validate.sh ; fi
 RUN go build -mod=vendor -ldflags "-X github.com/prebid/prebid-server/v4/version.Ver=`git describe --tags | sed 's/^v//'` -X github.com/prebid/prebid-server/v4/version.Rev=`git rev-parse HEAD`" .
 
 FROM ubuntu:22.04 AS release
-LABEL maintainer="hans.hjort@xandr.com" 
+LABEL maintainer="hans.hjort@xandr.com"
 WORKDIR /usr/local/bin/
+
+# Install runtime dependencies first so layer is cached across builds
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates mtr libatomic1 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
+
 COPY --from=build /app/prebid-server .
 RUN chmod a+xr prebid-server
 COPY static static/
 COPY stored_requests/data stored_requests/data
 RUN chmod -R a+r static/ stored_requests/data
 
-# Installing libatomic1 as it is a runtime dependency for some modules
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates mtr libatomic1 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN addgroup --system --gid 2001 prebidgroup && adduser --system --uid 1001 --ingroup prebidgroup prebid
 USER prebid
 EXPOSE 8000
 EXPOSE 6060
