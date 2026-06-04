@@ -18,11 +18,8 @@ type bidderTimer struct {
 	Start time.Time
 }
 
-func getStringFromContext(mc hookstage.ModuleContext, key string) string {
-	if mc == nil {
-		return ""
-	}
-	v, ok := mc[key]
+func getStringFromContext(mc *hookstage.ModuleContext, key string) string {
+	v, ok := mc.Get(key)
 	if !ok {
 		return ""
 	}
@@ -30,26 +27,23 @@ func getStringFromContext(mc hookstage.ModuleContext, key string) string {
 	return s
 }
 
-func getTraceID(mc hookstage.ModuleContext) string {
+func getTraceID(mc *hookstage.ModuleContext) string {
 	return getStringFromContext(mc, ctxKeyTraceID)
 }
 
-func getRequestID(mc hookstage.ModuleContext) string {
+func getRequestID(mc *hookstage.ModuleContext) string {
 	return getStringFromContext(mc, ctxKeyRequestID)
 }
 
-func getTraceOrRequestID(mc hookstage.ModuleContext) string {
+func getTraceOrRequestID(mc *hookstage.ModuleContext) string {
 	if id := getRequestID(mc); id != "" {
 		return id
 	}
 	return getTraceID(mc)
 }
 
-func getStartTime(mc hookstage.ModuleContext) (time.Time, bool) {
-	if mc == nil {
-		return time.Time{}, false
-	}
-	v, ok := mc[ctxKeyStartTime]
+func getStartTime(mc *hookstage.ModuleContext) (time.Time, bool) {
+	v, ok := mc.Get(ctxKeyStartTime)
 	if !ok {
 		return time.Time{}, false
 	}
@@ -57,11 +51,8 @@ func getStartTime(mc hookstage.ModuleContext) (time.Time, bool) {
 	return t, ok
 }
 
-func getBidderTimers(mc hookstage.ModuleContext) *sync.Map {
-	if mc == nil {
-		return nil
-	}
-	v, ok := mc[ctxKeyBidderTimers]
+func getBidderTimers(mc *hookstage.ModuleContext) *sync.Map {
+	v, ok := mc.Get(ctxKeyBidderTimers)
 	if !ok {
 		return nil
 	}
@@ -69,7 +60,7 @@ func getBidderTimers(mc hookstage.ModuleContext) *sync.Map {
 	return m
 }
 
-func recordBidderStartTime(mc hookstage.ModuleContext, bidder string) {
+func recordBidderStartTime(mc *hookstage.ModuleContext, bidder string) {
 	timers := getBidderTimers(mc)
 	if timers == nil {
 		return
@@ -77,7 +68,7 @@ func recordBidderStartTime(mc hookstage.ModuleContext, bidder string) {
 	timers.Store(bidder, bidderTimer{Start: time.Now()})
 }
 
-func getBidderElapsedMs(mc hookstage.ModuleContext, bidder string) int64 {
+func getBidderElapsedMs(mc *hookstage.ModuleContext, bidder string) int64 {
 	timers := getBidderTimers(mc)
 	if timers == nil {
 		return 0

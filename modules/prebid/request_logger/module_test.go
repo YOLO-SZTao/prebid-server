@@ -127,8 +127,6 @@ func TestHandleEntrypoint(t *testing.T) {
 }
 
 func TestEntrypointContextPropagationToLaterStages(t *testing.T) {
-	// Verify that when log_entrypoint=false but enabled=true,
-	// subsequent stages can still access trace_id, start_time, and bidder_timers.
 	m := &RequestLoggerModule{cfg: RequestLoggerConfig{
 		Enabled:               true,
 		LogEntrypoint:         false,
@@ -160,7 +158,6 @@ func TestEntrypointContextPropagationToLaterStages(t *testing.T) {
 	})
 
 	t.Run("raw_bidder_response gets elapsed ms", func(t *testing.T) {
-		// Small delay to ensure non-zero elapsed time
 		time.Sleep(10 * time.Millisecond)
 
 		_, err := m.HandleRawBidderResponseHook(context.Background(),
@@ -172,7 +169,7 @@ func TestEntrypointContextPropagationToLaterStages(t *testing.T) {
 		assert.Greater(t, elapsed, int64(0), "elapsed should be > 0")
 	})
 
-	t.Run("exitpoint gets request_elapsed_ms", func(t *testing.T) {
+	t.Run("exitpoint gets start_time", func(t *testing.T) {
 		_, ok := getStartTime(entryMC)
 		assert.True(t, ok)
 	})
@@ -194,10 +191,12 @@ func TestHandleProcessedAuction(t *testing.T) {
 			BidRequest: &openrtb2.BidRequest{ID: "req-123"},
 		}
 		result, err := m.HandleProcessedAuctionHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.ProcessedAuctionRequestPayload{Request: req})
 		assert.NoError(t, err)
-		assert.Equal(t, "req-123", result.ModuleContext[ctxKeyRequestID])
+		v, ok := result.ModuleContext.Get(ctxKeyRequestID)
+		assert.True(t, ok)
+		assert.Equal(t, "req-123", v)
 	})
 
 	t.Run("does not overwrite existing request_id", func(t *testing.T) {
@@ -205,8 +204,10 @@ func TestHandleProcessedAuction(t *testing.T) {
 		req := &openrtb_ext.RequestWrapper{
 			BidRequest: &openrtb2.BidRequest{ID: "new-id"},
 		}
+		mc := hookstage.NewModuleContext()
+		mc.Set(ctxKeyRequestID, "existing-id")
 		result, err := m.HandleProcessedAuctionHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{ctxKeyRequestID: "existing-id"}},
+			hookstage.ModuleInvocationContext{ModuleContext: mc},
 			hookstage.ProcessedAuctionRequestPayload{Request: req})
 		assert.NoError(t, err)
 		assert.Nil(t, result.ModuleContext)
@@ -226,7 +227,8 @@ func TestHandleBidderRequest(t *testing.T) {
 	t.Run("records bidder timer", func(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		timers := &sync.Map{}
-		mc := hookstage.ModuleContext{ctxKeyBidderTimers: timers}
+		mc := hookstage.NewModuleContext()
+		mc.Set(ctxKeyBidderTimers, timers)
 
 		_, err := m.HandleBidderRequestHook(context.Background(),
 			hookstage.ModuleInvocationContext{ModuleContext: mc},
@@ -244,10 +246,9 @@ func TestHandleBidderRequest(t *testing.T) {
 func TestHandleBidderRequestConcurrency(t *testing.T) {
 	m := &RequestLoggerModule{cfg: newConfig()}
 	timers := &sync.Map{}
-	mc := hookstage.ModuleContext{
-		ctxKeyTraceID:      "trace-123",
-		ctxKeyBidderTimers: timers,
-	}
+	mc := hookstage.NewModuleContext()
+	mc.Set(ctxKeyTraceID, "trace-123")
+	mc.Set(ctxKeyBidderTimers, timers)
 
 	bidders := []string{"pubmatic", "rubicon", "appnexus", "bigoad", "axonix"}
 
@@ -286,7 +287,7 @@ func TestHandleRawBidderResponse(t *testing.T) {
 	t.Run("nil bidder response", func(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		result, err := m.HandleRawBidderResponseHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.RawBidderResponsePayload{Bidder: "pubmatic", BidderResponse: nil})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -304,7 +305,7 @@ func TestHandleRawBidderResponse(t *testing.T) {
 			},
 		}
 		result, err := m.HandleRawBidderResponseHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.RawBidderResponsePayload{Bidder: "pubmatic", BidderResponse: resp})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -327,7 +328,7 @@ func TestHandleAllProcessedBidResponses(t *testing.T) {
 			"pubmatic": {Bids: []*entities.PbsOrtbBid{{}}},
 		}
 		result, err := m.HandleAllProcessedBidResponsesHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.AllProcessedBidResponsesPayload{Responses: responses})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -347,7 +348,7 @@ func TestHandleAuctionResponse(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		result, err := m.HandleAuctionResponseHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.AuctionResponsePayload{BidResponse: nil})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -365,7 +366,7 @@ func TestHandleAuctionResponse(t *testing.T) {
 			},
 		}
 		result, err := m.HandleAuctionResponseHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.AuctionResponsePayload{BidResponse: resp})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -375,7 +376,7 @@ func TestHandleAuctionResponse(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		resp := &openrtb2.BidResponse{Ext: json.RawMessage(`invalid`)}
 		result, err := m.HandleAuctionResponseHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.AuctionResponsePayload{BidResponse: resp})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -395,7 +396,7 @@ func TestHandleExitpoint(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		result, err := m.HandleExitpointHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.ExitpointPayload{Response: nil})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -405,7 +406,7 @@ func TestHandleExitpoint(t *testing.T) {
 		m := &RequestLoggerModule{cfg: newConfig()}
 		resp := &openrtb2.BidResponse{ID: "resp-1"}
 		result, err := m.HandleExitpointHook(context.Background(),
-			hookstage.ModuleInvocationContext{ModuleContext: hookstage.ModuleContext{}},
+			hookstage.ModuleInvocationContext{ModuleContext: hookstage.NewModuleContext()},
 			hookstage.ExitpointPayload{Response: resp})
 		assert.NoError(t, err)
 		assert.False(t, result.Reject)
@@ -431,19 +432,19 @@ func TestGenerateTraceID(t *testing.T) {
 
 func TestContextHelpers(t *testing.T) {
 	t.Run("nil ModuleContext", func(t *testing.T) {
-		assert.Empty(t, getTraceID(nil))
-		assert.Empty(t, getRequestID(nil))
-		assert.Empty(t, getTraceOrRequestID(nil))
-		_, ok := getStartTime(nil)
+		var nilMC *hookstage.ModuleContext
+		assert.Empty(t, getTraceID(nilMC))
+		assert.Empty(t, getRequestID(nilMC))
+		assert.Empty(t, getTraceOrRequestID(nilMC))
+		_, ok := getStartTime(nilMC)
 		assert.False(t, ok)
-		assert.Nil(t, getBidderTimers(nil))
+		assert.Nil(t, getBidderTimers(nilMC))
 	})
 
 	t.Run("trace or request id prefers request", func(t *testing.T) {
-		mc := hookstage.ModuleContext{
-			ctxKeyTraceID:   "trace-1",
-			ctxKeyRequestID: "req-1",
-		}
+		mc := hookstage.NewModuleContext()
+		mc.Set(ctxKeyTraceID, "trace-1")
+		mc.Set(ctxKeyRequestID, "req-1")
 		assert.Equal(t, "req-1", getTraceOrRequestID(mc))
 	})
 }

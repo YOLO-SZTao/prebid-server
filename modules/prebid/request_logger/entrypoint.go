@@ -19,11 +19,11 @@ func (m *RequestLoggerModule) handleEntrypoint(
 
 	traceID := generateTraceID()
 
-	result.ModuleContext = hookstage.ModuleContext{
-		ctxKeyTraceID:      traceID,
-		ctxKeyStartTime:    time.Now(),
-		ctxKeyBidderTimers: &sync.Map{},
-	}
+	mc := hookstage.NewModuleContext()
+	mc.Set(ctxKeyTraceID, traceID)
+	mc.Set(ctxKeyStartTime, time.Now())
+	mc.Set(ctxKeyBidderTimers, &sync.Map{})
+	result.ModuleContext = mc
 
 	if !m.cfg.LogEntrypoint {
 		return result, nil

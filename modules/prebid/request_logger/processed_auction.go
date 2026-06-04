@@ -24,9 +24,10 @@ func (m *RequestLoggerModule) handleProcessedAuction(
 		reqID := payload.Request.ID
 		if reqID != "" {
 			if getRequestID(miCtx.ModuleContext) == "" {
-				result.ModuleContext = hookstage.ModuleContext{
-					ctxKeyRequestID: reqID,
+				if result.ModuleContext == nil {
+					result.ModuleContext = hookstage.NewModuleContext()
 				}
+				result.ModuleContext.Set(ctxKeyRequestID, reqID)
 			}
 			fields["request_id"] = reqID
 		}
