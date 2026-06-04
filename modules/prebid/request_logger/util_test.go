@@ -157,23 +157,29 @@ func TestCountBids(t *testing.T) {
 
 func TestSummarizeExt(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
-		errB, warnB, httpB := summarizeExt(nil)
+		errB, errD, warnB, warnD, httpB := summarizeExt(nil)
 		assert.Nil(t, errB)
+		assert.Nil(t, errD)
 		assert.Nil(t, warnB)
+		assert.Nil(t, warnD)
 		assert.Nil(t, httpB)
 	})
 
 	t.Run("nil ext", func(t *testing.T) {
-		errB, warnB, httpB := summarizeExt(&openrtb2.BidResponse{})
+		errB, errD, warnB, warnD, httpB := summarizeExt(&openrtb2.BidResponse{})
 		assert.Nil(t, errB)
+		assert.Nil(t, errD)
 		assert.Nil(t, warnB)
+		assert.Nil(t, warnD)
 		assert.Nil(t, httpB)
 	})
 
 	t.Run("malformed ext", func(t *testing.T) {
-		errB, warnB, httpB := summarizeExt(&openrtb2.BidResponse{Ext: json.RawMessage(`not json`)})
+		errB, errD, warnB, warnD, httpB := summarizeExt(&openrtb2.BidResponse{Ext: json.RawMessage(`not json`)})
 		assert.Nil(t, errB)
+		assert.Nil(t, errD)
 		assert.Nil(t, warnB)
+		assert.Nil(t, warnD)
 		assert.Nil(t, httpB)
 	})
 
@@ -194,9 +200,16 @@ func TestSummarizeExt(t *testing.T) {
 		}
 		data, _ := json.Marshal(ext)
 
-		errB, warnB, httpB := summarizeExt(&openrtb2.BidResponse{Ext: json.RawMessage(data)})
+		errB, errD, warnB, warnD, httpB := summarizeExt(&openrtb2.BidResponse{Ext: json.RawMessage(data)})
 		assert.Equal(t, []string{"pubmatic", "rubicon"}, errB)
+		assert.Equal(t, map[string][]map[string]any{
+			"pubmatic": {{"code": 2, "message": "error"}},
+			"rubicon":  {{"code": 1, "message": "timeout"}},
+		}, errD)
 		assert.Equal(t, []string{"appnexus"}, warnB)
+		assert.Equal(t, map[string][]map[string]any{
+			"appnexus": {{"code": 3, "message": "warning"}},
+		}, warnD)
 		assert.Equal(t, []string{"pubmatic"}, httpB)
 	})
 }

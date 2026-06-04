@@ -28,9 +28,11 @@ func (m *RequestLoggerModule) handleAuctionResponse(
 			fields["nbr"] = *payload.BidResponse.NBR
 		}
 
-		errorBidders, warningBidders, httpcallBidders := summarizeExt(payload.BidResponse)
+		errorBidders, errorDetails, warningBidders, warningDetails, httpcallBidders := summarizeExt(payload.BidResponse)
 		fields["ext_error_bidders"] = errorBidders
+		fields["ext_error_details"] = errorDetails
 		fields["ext_warning_bidders"] = warningBidders
+		fields["ext_warning_details"] = warningDetails
 		fields["httpcall_bidders"] = httpcallBidders
 	}
 

@@ -142,23 +142,39 @@ func countBids(resp *openrtb2.BidResponse) int {
 	return n
 }
 
-func summarizeExt(resp *openrtb2.BidResponse) (errorBidders []string, warningBidders []string, httpcallBidders []string) {
+func summarizeExt(resp *openrtb2.BidResponse) (errorBidders []string, errorDetails map[string][]map[string]any, warningBidders []string, warningDetails map[string][]map[string]any, httpcallBidders []string) {
 	if resp == nil || resp.Ext == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 
 	var ext openrtb_ext.ExtBidResponse
 	if err := json.Unmarshal(resp.Ext, &ext); err != nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 
-	for bidder := range ext.Errors {
-		errorBidders = append(errorBidders, string(bidder))
+	errorDetails = make(map[string][]map[string]any)
+	for bidder, msgs := range ext.Errors {
+		bidderStr := string(bidder)
+		errorBidders = append(errorBidders, bidderStr)
+		for _, m := range msgs {
+			errorDetails[bidderStr] = append(errorDetails[bidderStr], map[string]any{
+				"code":    m.Code,
+				"message": m.Message,
+			})
+		}
 	}
 	sort.Strings(errorBidders)
 
-	for bidder := range ext.Warnings {
-		warningBidders = append(warningBidders, string(bidder))
+	warningDetails = make(map[string][]map[string]any)
+	for bidder, msgs := range ext.Warnings {
+		bidderStr := string(bidder)
+		warningBidders = append(warningBidders, bidderStr)
+		for _, m := range msgs {
+			warningDetails[bidderStr] = append(warningDetails[bidderStr], map[string]any{
+				"code":    m.Code,
+				"message": m.Message,
+			})
+		}
 	}
 	sort.Strings(warningBidders)
 
